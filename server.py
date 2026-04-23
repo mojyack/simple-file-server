@@ -8,15 +8,18 @@ from io import BytesIO
 
 import multipart
 
+
 class Server(SimpleHTTPRequestHandler):
     def send_head_abs(self, path):
         try:
-            f = open(path, 'rb')
+            f = open(path, "rb")
         except OSError:
             self.send_error(HTTPStatus.NOT_FOUND, "File not found")
             return None
 
         ctype = super().guess_type(path)
+        if ctype.startswith("text/") and "charset=" not in ctype:
+            ctype += "; charset=UTF-8"
         try:
             fs = os.fstat(f.fileno())
             self.send_response(HTTPStatus.OK)
@@ -29,7 +32,7 @@ class Server(SimpleHTTPRequestHandler):
             raise
 
     def do_GET(self):
-        if self.path == '/':
+        if self.path == "/":
             path = join(dirname(__file__), "index.html")
             f = self.send_head_abs(path)
             if f:
@@ -41,13 +44,13 @@ class Server(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        ctype = self.headers['content-type']
-        clen = int(self.headers['content-length'])
-        if ctype.startswith('text/plain'):
-            text = self.rfile.read(clen).decode('utf-8')[5:-2]
+        ctype = self.headers["content-type"]
+        clen = int(self.headers["content-length"])
+        if ctype.startswith("text/plain"):
+            text = self.rfile.read(clen).decode("utf-8")[5:-2]
             print('message: "{}"'.format(text))
-        elif ctype.startswith('multipart/form-data'):
-            boundary = ctype[ctype.find('=') + 1:]
+        elif ctype.startswith("multipart/form-data"):
+            boundary = ctype[ctype.find("=") + 1 :]
             parser = multipart.MultipartParser(BytesIO(self.rfile.read(clen)), boundary)
 
             for part in parser.parts():
@@ -62,6 +65,7 @@ class Server(SimpleHTTPRequestHandler):
 
         self.send_response(200)
         self.end_headers()
+
 
 server = HTTPServer(("0.0.0.0", 8000), Server)
 server.serve_forever()
